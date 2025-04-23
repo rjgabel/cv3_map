@@ -125,8 +125,8 @@ def render_room(room):
             render_screen(room, room.tsa_map+48*x, img, x*SCREEN_X, 0, 6)
     return img
 
-def create_world():
-    with open('00.txt', 'r') as f:
+def create_world(filename):
+    with open('worlds/' + filename + '.txt', 'r') as f:
         lines = f.readlines()
     lines = [line.rstrip() for line in lines]
 
@@ -183,8 +183,7 @@ def create_world():
     return (rooms, w, h)
 
 def render_world(world, w, h):
-    img = Image.new('P', (w, h), color=0x0F)
-    img.putpalette(NES_PAL)
+    img = Image.new('RGBA', (w, h))
     for room in world:
         room_img = render_room(room)
         img.paste(room_img, (room.x, room.y, room.x+room.w, room.y+room.h))
@@ -196,4 +195,4 @@ with open('nes.pal', 'rb') as f:
 #render_stage()
 #print(get_palette(get_room_pal(0,0,0)))
 
-render_world(*create_world())
+render_world(*create_world('01a'))
