@@ -13,7 +13,7 @@ def read_ptr(addr, bank):
     lo = prgrom[addr]
     hi = prgrom[addr+1]
     ptr = (hi << 8)|lo
-    return (ptr&0x1FFF)|(bank *0x2000)
+    return (ptr&0x3FFF)|(bank * 0x2000)
 
 def load_rom(filename):
     with open(filename, 'rb') as f:
@@ -69,14 +69,16 @@ def get_room_type(stage, block, room):
     return prgrom[block_ptr+room]
 
 def get_tsa_def(stage):
-    def_addr = read_ptr(0x3D917 + stage*2, 0x10)
-    pal_addr = read_ptr(0x3D935 + stage*2, 0x10)
+    rom_bank = prgrom[0x3C94B + stage] * 2
+    def_addr = read_ptr(0x3D917 + stage*2, rom_bank)
+    pal_addr = read_ptr(0x3D935 + stage*2, rom_bank)
     return (def_addr, pal_addr)
 
 def get_tsa_map(stage, block, room):
-    stage_ptr = read_ptr(0x3D8F9+stage*2, 0x10)
-    block_ptr = read_ptr(stage_ptr+block*2, 0x10)
-    room_ptr = read_ptr(block_ptr+room*2+1, 0x10)
+    rom_bank = prgrom[0x3C94B + stage] * 2
+    stage_ptr = read_ptr(0x3D8F9+stage*2, rom_bank)
+    block_ptr = read_ptr(stage_ptr+block*2, rom_bank)
+    room_ptr = read_ptr(block_ptr+room*2+1, rom_bank)
     return (prgrom[room_ptr]+1, room_ptr+1)
 
 def get_tile_addr(tile, chr_5, chr_6):
@@ -103,7 +105,7 @@ def render_screen(addr, tsa_def, tsa_attr, chr_5, chr_6, pal, img, bx, by, y_siz
             tsa_id = prgrom[addr+x+y*8]
             render_tsa(tsa_id, tsa_def, tsa_attr, chr_5, chr_6, pal, img, bx+x*8*4, by+y*8*4)
 
-def render_room(stage, block, room):
+def render_room(stage, block, room):    
     (tsa_def, tsa_attr) = get_tsa_def(stage)
     (room_size, tsa_map) = get_tsa_map(stage, block, room)
     (chr_5, chr_6) = get_room_chr(stage, block, room)
@@ -111,13 +113,15 @@ def render_room(stage, block, room):
 
     room_type = get_room_type(stage, block, room)
     if room_type & 0x80:
+        # Vertical rooms are weird because there's a 16-pixel row (half a metatile)
+        # at the bottom of each screen that doesn't actually show up
         SCREEN_X = 256
         SCREEN_Y = 240
         img = Image.new('P', (SCREEN_X,room_size*SCREEN_Y+16))
         img.putpalette(NES_PAL)
         for y in range(room_size):
             render_screen(tsa_map+64*y, tsa_def, tsa_attr, chr_5, chr_6, pal, img, 0, y*SCREEN_Y, 8)
-        img.show()
+        img = img.crop((0, 0, SCREEN_X, room_size*SCREEN_Y))
     else:
         SCREEN_X = 256
         SCREEN_Y = 192
@@ -125,8 +129,9 @@ def render_room(stage, block, room):
         img.putpalette(NES_PAL)
         for x in range(room_size):
             render_screen(tsa_map+48*x, tsa_def, tsa_attr, chr_5, chr_6, pal, img, x*SCREEN_X, 0, 6)
-        img.show()
+    img.show()
 
 (prgrom, chrrom) = load_rom('Akumajou Densetsu (Japan).nes')
-render_room(0,1,1)
+for i in range(15):
+    render_room(i,0,0)
 #print(get_palette(get_room_pal(0,0,0)))
