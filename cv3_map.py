@@ -5,6 +5,7 @@ CHR_SIZE = 128 * 1024
 
 GREYSCALE_PAL = [0,0,0,85,85,85,170,170,170,255,255,255]
 
+# "bank" is the bank of the pointer read, not the bank of the address
 def read_ptr(addr, bank):
     lo = prgrom[addr]
     hi = prgrom[addr+1]
@@ -41,7 +42,9 @@ def get_room_chr(stage, block, room):
 
 def get_tsa_def(stage):
     # TODO: Fix this later
-    return 0x20441 # For stage 1
+    #return 0x20441 # For stage 1
+    def_addr = read_ptr(0x3D917 + stage*2, 0x10)
+    return def_addr
 
 def get_tsa_map(stage, block, room):
     stage_ptr = read_ptr(0x3D8F9+stage*2, 0x10)
@@ -85,4 +88,4 @@ def render_room(stage, block, room):
     img.show()
 
 (prgrom, chrrom) = load_rom('Akumajou Densetsu (Japan).nes')
-render_room(0,2,0)
+render_room(1,0,0)
