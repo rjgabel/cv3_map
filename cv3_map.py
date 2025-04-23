@@ -147,15 +147,22 @@ def create_world(filename):
             offset = int(l[4])*16
         else:
             offset = 0
-            
-        old_room = rooms[-1]
-        if attach_side == 'u':
+
+        if len(l) > 5:
+            old_room = rooms[int(l[5])]
+        else:
+            old_room = rooms[-1]
+
+        if attach_side == 'U':
             new_room.x = old_room.x + offset
             new_room.y = old_room.y - new_room.h
-        elif attach_side == 'd':
+        elif attach_side == 'D':
             new_room.x = old_room.x + offset
             new_room.y = old_room.y + old_room.h
-        elif attach_side == 'r':
+        elif attach_side == 'L':
+            new_room.x = old_room.x - new_room.w
+            new_room.y = old_room.y + offset
+        elif attach_side == 'R':
             new_room.x = old_room.x + old_room.w
             new_room.y = old_room.y + offset
         else:
@@ -195,4 +202,4 @@ with open('nes.pal', 'rb') as f:
 #render_stage()
 #print(get_palette(get_room_pal(0,0,0)))
 
-render_world(*create_world('01a'))
+render_world(*create_world('05'))
