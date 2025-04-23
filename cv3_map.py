@@ -3,6 +3,8 @@ from PIL import Image
 PRG_SIZE = 256 * 1024
 CHR_SIZE = 128 * 1024
 
+#3C94B has the stage banks?
+
 with open('nes.pal', 'rb') as f:
     NES_PAL = f.read()
 
@@ -61,6 +63,11 @@ def get_room_pal(stage, block, room):
     index = prgrom[block_ptr+room]
     return index
 
+def get_room_type(stage, block, room):
+    stage_ptr = read_ptr(0x3D953 + stage*2, 0x1E)
+    block_ptr = read_ptr(stage_ptr + block*2, 0x1E)
+    return prgrom[block_ptr+room]
+
 def get_tsa_def(stage):
     def_addr = read_ptr(0x3D917 + stage*2, 0x10)
     pal_addr = read_ptr(0x3D935 + stage*2, 0x10)
@@ -90,26 +97,36 @@ def render_tsa(tsa_id, tsa_def, tsa_attr, chr_5, chr_6, pal, img, bx, by):
             tile_addr = get_tile_addr(tile_id, chr_5, chr_6)
             load_tile(tile_addr, pal[index], img, bx+x*8, by+y*8)
 
-def render_screen(addr, tsa_def, tsa_attr, chr_5, chr_6, pal, img, bx, by):
-    for y in range(6):
+def render_screen(addr, tsa_def, tsa_attr, chr_5, chr_6, pal, img, bx, by, y_size):
+    for y in range(y_size):
         for x in range(8):
             tsa_id = prgrom[addr+x+y*8]
             render_tsa(tsa_id, tsa_def, tsa_attr, chr_5, chr_6, pal, img, bx+x*8*4, by+y*8*4)
 
 def render_room(stage, block, room):
-    SCREEN_X = 8*8*4
-    SCREEN_Y = 6*8*4
     (tsa_def, tsa_attr) = get_tsa_def(stage)
     (room_size, tsa_map) = get_tsa_map(stage, block, room)
     (chr_5, chr_6) = get_room_chr(stage, block, room)
     pal = get_palette(get_room_pal(stage, block, room))
-    
-    img = Image.new('P', (room_size*SCREEN_X,SCREEN_Y))
-    img.putpalette(NES_PAL)
-    for x in range(room_size):
-        render_screen(tsa_map+48*x, tsa_def, tsa_attr, chr_5, chr_6, pal, img, x*SCREEN_X, 0)
-    img.show()
+
+    room_type = get_room_type(stage, block, room)
+    if room_type & 0x80:
+        SCREEN_X = 256
+        SCREEN_Y = 240
+        img = Image.new('P', (SCREEN_X,room_size*SCREEN_Y+16))
+        img.putpalette(NES_PAL)
+        for y in range(room_size):
+            render_screen(tsa_map+64*y, tsa_def, tsa_attr, chr_5, chr_6, pal, img, 0, y*SCREEN_Y, 8)
+        img.show()
+    else:
+        SCREEN_X = 256
+        SCREEN_Y = 192
+        img = Image.new('P', (room_size*SCREEN_X,SCREEN_Y))
+        img.putpalette(NES_PAL)
+        for x in range(room_size):
+            render_screen(tsa_map+48*x, tsa_def, tsa_attr, chr_5, chr_6, pal, img, x*SCREEN_X, 0, 6)
+        img.show()
 
 (prgrom, chrrom) = load_rom('Akumajou Densetsu (Japan).nes')
-render_room(0,0,0)
+render_room(0,1,1)
 #print(get_palette(get_room_pal(0,0,0)))
