@@ -68,13 +68,13 @@ def render_screen(room, addr, img, bx, by, y_size):
 
 class Room:    
     def __init__(self, stage, block, subroom):
-        self.stage = stage
-        self.block = block
-        self.subroom = subroom
+        self.stage = int(stage)
+        self.block = int(block)
+        self.subroom = int(subroom)
 
         stage_ptr = 0x005F
-        block_ptr = read_ptr(stage_ptr+stage*2, 0)
-        room_ptr = read_ptr(block_ptr+block*4, 0)
+        block_ptr = read_ptr(stage_ptr+self.stage*2, 0)
+        room_ptr = read_ptr(block_ptr+self.block*4, 0)
         self.chr_5 = prgrom[room_ptr+self.subroom*2]
         self.chr_6 = prgrom[room_ptr+self.subroom*2+1]
 
@@ -96,9 +96,16 @@ class Room:
         self.size = prgrom[room_ptr]+1
         self.tsa_map = room_ptr+1
 
-def render_room(stage, block, room):
-    room = Room(stage, block, room)
+        if self.type & 0x80:
+            # Vertical room
+            self.h = self.size*240
+            self.w = 256
+        else:
+            # Horizontal room
+            self.h = 192
+            self.w = self.size*256
 
+def render_room(room):
     if room.type & 0x80:
         # Vertical rooms are weird because there's a 16-pixel row (half a metatile)
         # at the bottom of each screen that doesn't actually show up
@@ -116,10 +123,77 @@ def render_room(stage, block, room):
         img.putpalette(NES_PAL)
         for x in range(room.size):
             render_screen(room, room.tsa_map+48*x, img, x*SCREEN_X, 0, 6)
+    return img
+
+def create_world():
+    with open('00.txt', 'r') as f:
+        lines = f.readlines()
+    lines = [line.rstrip() for line in lines]
+
+    # Handle first room specially
+    l0 = lines[0].split(' ')
+    room = Room(*l0)
+    room.x = 0
+    room.y = 0
+    rooms = [room]
+    lines = lines[1:]
+
+    for line in lines:
+        l = line.split(' ')
+        new_room = Room(*l[0:3])
+        attach_side = l[3]
+        
+        if len(l) > 4:
+            offset = int(l[4])*16
+        else:
+            offset = 0
+            
+        old_room = rooms[-1]
+        if attach_side == 'u':
+            new_room.x = old_room.x + offset
+            new_room.y = old_room.y - new_room.h
+        elif attach_side == 'd':
+            new_room.x = old_room.x + offset
+            new_room.y = old_room.y + old_room.h
+        elif attach_side == 'r':
+            new_room.x = old_room.x + old_room.w
+            new_room.y = old_room.y + offset
+        else:
+            assert 1==0
+        rooms.append(new_room)
+
+    # Figure out bounds
+    min_x = 0
+    min_y = 0
+    max_x = 0
+    max_y = 0
+    for room in rooms:
+        min_x = min(room.x, min_x)
+        min_y = min(room.y, min_y)
+        max_x = max(room.x+room.w, max_x)
+        max_y = max(room.y+room.h, max_y)
+
+    # Adjust coordinates so they're all positive
+    for room in rooms:
+        room.x -= min_x
+        room.y -= min_y
+
+    w = max_x - min_x
+    h = max_y - min_y
+    return (rooms, w, h)
+
+def render_world(world, w, h):
+    img = Image.new('P', (w, h), color=0x0F)
+    img.putpalette(NES_PAL)
+    for room in world:
+        room_img = render_room(room)
+        img.paste(room_img, (room.x, room.y, room.x+room.w, room.y+room.h))
     img.show()
 
 with open('nes.pal', 'rb') as f:
     NES_PAL = f.read()
 (prgrom, chrrom) = load_rom('Akumajou Densetsu (Japan).nes')
-render_room(1,0,0)
+#render_stage()
 #print(get_palette(get_room_pal(0,0,0)))
+
+render_world(*create_world())
