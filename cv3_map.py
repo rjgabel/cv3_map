@@ -41,10 +41,9 @@ def get_room_chr(stage, block, room):
     return (chr_5,chr_6)
 
 def get_tsa_def(stage):
-    # TODO: Fix this later
-    #return 0x20441 # For stage 1
     def_addr = read_ptr(0x3D917 + stage*2, 0x10)
-    return def_addr
+    pal_addr = read_ptr(0x3D935 + stage*2, 0x10)
+    return (def_addr, pal_addr)
 
 def get_tsa_map(stage, block, room):
     stage_ptr = read_ptr(0x3D8F9+stage*2, 0x10)
@@ -67,25 +66,24 @@ def render_tsa(tsa_id, tsa_def, chr_5, chr_6, img, bx, by):
             tile_addr = get_tile_addr(tile_id, chr_5, chr_6)
             load_tile(tile_addr, img, bx+x*8, by+y*8)
 
-def render_screen(addr, tsa_def, chr_5, chr_6, img, bx, by):
+def render_screen(addr, tsa_def, tsa_attr, chr_5, chr_6, img, bx, by):
     for y in range(6):
         for x in range(8):
             tsa_id = prgrom[addr+x+y*8]
             render_tsa(tsa_id, tsa_def, chr_5, chr_6, img, bx+x*8*4, by+y*8*4)
-            
 
 def render_room(stage, block, room):
     SCREEN_X = 8*8*4
     SCREEN_Y = 6*8*4
-    tsa_def = get_tsa_def(stage)
+    (tsa_def, tsa_attr) = get_tsa_def(stage)
     (room_size, tsa_map) = get_tsa_map(stage, block, room)
-    (chr_5,chr_6) = get_room_chr(stage, block, room)
+    (chr_5, chr_6) = get_room_chr(stage, block, room)
     
     img = Image.new('P', (room_size*SCREEN_X,SCREEN_Y))
     img.putpalette(GREYSCALE_PAL)
     for x in range(room_size):
-        render_screen(tsa_map+48*x, tsa_def, chr_5, chr_6, img, x*SCREEN_X, 0)
+        render_screen(tsa_map+48*x, tsa_def, tsa_attr, chr_5, chr_6, img, x*SCREEN_X, 0)
     img.show()
 
 (prgrom, chrrom) = load_rom('Akumajou Densetsu (Japan).nes')
-render_room(1,0,0)
+render_room(0,0,0)
