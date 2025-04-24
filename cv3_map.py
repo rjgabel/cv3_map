@@ -202,4 +202,4 @@ with open('nes.pal', 'rb') as f:
 #render_stage()
 #print(get_palette(get_room_pal(0,0,0)))
 
-render_world(*create_world('09'))
+render_world(*create_world('10'))
