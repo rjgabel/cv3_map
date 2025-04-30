@@ -66,6 +66,16 @@ def render_screen(room, addr, img, bx, by, y_size):
             tsa_id = prgrom[addr+x+y*8]
             render_tsa(room, tsa_id, img, bx+x*8*4, by+y*8*4)
 
+# For some reason the code randomly fails on these specific rooms,
+# just hardcode them for now
+TSA_OVERRIDES = {
+    (13,0,0):(0x220DF,0x22110,0x22630),
+    (13,0,1):(0x21FEE,0x22110,0x22630),
+    (13,2,2):(0x1C418,0x1C449,0x1C9A9),
+    (13,3,0):(0x1C387,0x1C449,0x1C9A9),
+    (14,0,1):(0x21349,0x2140A,0x2195A),
+}
+
 class Room:    
     def __init__(self, stage, block, subroom):
         self.stage = int(stage)
@@ -90,9 +100,15 @@ class Room:
         self.tsa_def = read_ptr(0x3D917 + self.stage*2, rom_bank)
         self.tsa_attr = read_ptr(0x3D935 + self.stage*2, rom_bank)
 
-        stage_ptr = read_ptr(0x3D8F9+self.stage*2, rom_bank)
-        block_ptr = read_ptr(stage_ptr+self.block*2, rom_bank)
-        room_ptr = read_ptr(block_ptr+self.subroom*2+1, rom_bank)
+        if (self.stage,self.block,self.subroom) in TSA_OVERRIDES:
+            overrides = TSA_OVERRIDES[(self.stage,self.block,self.subroom)]
+            room_ptr = overrides[0]
+            self.tsa_def = overrides[1]
+            self.tsa_attr = overrides[2]
+        else:
+            stage_ptr = read_ptr(0x3D8F9+self.stage*2, rom_bank)
+            block_ptr = read_ptr(stage_ptr+self.block*2, rom_bank)
+            room_ptr = read_ptr(block_ptr+self.subroom*2+1, rom_bank)
         self.size = prgrom[room_ptr]+1
         self.tsa_map = room_ptr+1
 
@@ -202,4 +218,4 @@ with open('nes.pal', 'rb') as f:
 #render_stage()
 #print(get_palette(get_room_pal(0,0,0)))
 
-render_world(*create_world('12'))
+render_world(*create_world('14'))
